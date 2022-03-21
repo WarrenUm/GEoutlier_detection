@@ -105,7 +105,7 @@ def update_local_price_db():
     
     '''Get updated prices from ge api. Add them to the prices table in geitems.db'''
     
-    conn = sqlite3.connect('geitems.db')
+    conn = sqlite3.connect('../geitems.db')
     cur = conn.cursor()
     
     price_df = update_data()
