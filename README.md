@@ -5,7 +5,7 @@ The goal of this project is to detect outliers in transactions for the Old Schoo
 ## Data
 The OSRS API provides two sets of data that I will use. The first is information about each item that currently exists in the game. This includes an item id, members item or not, in-game examine text, and name of the item. This data changes less often because items and updates occur less frequently than economy transactions. An example table can be found in the notebooks folder called latest_osrs_items.
 
-The most interesting data is the five minute price updates. Querying the api will return all items that have been traded in the last five minutes so low volume items will not appear often. Each query for the prices returns an item id, avg high and low prices, high and low volumes, and a UNIX timestamp. Many examples or this data are in the prices folder in any one of the csv files.
+The most interesting data is the five minute price updates. Querying the api will return all items that have been traded in the last five minutes so low volume items will not appear often. Each query for the prices returns an item id, avg high and low prices, high and low volumes, and a UNIX timestamp. Many examples of this data are in the prices folder in any one of the csv files.
 
 
 ## Data Management
