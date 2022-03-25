@@ -6,6 +6,8 @@ from osrs_fcns import *
 import schedule
 import time
 
+print('Starting Script')
+
 schedule.every(5).minutes.do(update_local_price_db)
 
 while True:
