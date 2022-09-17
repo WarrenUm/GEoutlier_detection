@@ -5,6 +5,12 @@ import json
 from datetime import datetime
 import sqlite3
 from sqlite3 import Error
+import csv
+import os
+from tqdm.notebook import tqdm_notebook
+from tqdm import tqdm
+import time
+import shutil
 
 def unix_conv(df,col):
     converted_col = pd.to_datetime(df[col], unit='s')
@@ -73,7 +79,7 @@ def update_items():
     return all_items
 
 
-def add_prices(conn, item):
+def add_prices(contents,conn):
     """
     Create a new project into the items table
     :param conn:
@@ -83,7 +89,7 @@ def add_prices(conn, item):
     sql = ''' INSERT INTO prices(item_id,timestamp,avgHighPrice,highPriceVolume,avgLowPrice,lowPriceVolume)
               VALUES(?,?,?,?,?,?) '''
     cur = conn.cursor()
-    cur.execute(sql, item)
+    cur.executemany(sql, contents)
     conn.commit()
     return cur.lastrowid
 
@@ -152,7 +158,7 @@ def getLatestTimestamp(file):
     #open file
     file = open(file,'r')
     #read line
-    print("Reading New time")
+#     print("Reading New time")
     timeLine = file.readline()
     #close file
     file.close()
@@ -163,18 +169,18 @@ def updateTimeFile(newTime,file):
     #open file
     file = open(file,'w')
     #overwrite first line with used timestamp
-    print(f'Updating Time File With: {newTime}')
+#     print(f'Updating Time File With: {newTime}')
     file.writelines(newTime)
     #close file
     file.close()
     return newTime
 
 def incrementTime(oldTime):
-    print('Incrementing Time')
+#     print('Incrementing Time')
     return oldTime + 300
 
 def addLatestData(itemdf):
-    print('Connecting to Database')
+#     print('Connecting to Database')
     conn = create_connection('../geitems.db')
     for row in range(0,len(itemdf)):
         item_id = int(itemdf.iloc[row]['item_id'])
@@ -186,8 +192,90 @@ def addLatestData(itemdf):
 
     
     price = (item_id,timestamp,avghigh,highvol,avglow,lowvol);
-    print('Adding Data To Table')
+#     print('Adding Data To Table')
     price_id = add_prices(conn, price)
-    print('Disconnecting from Database')
+#     print('Disconnecting from Database')
     conn.close()
     
+def write_to_csv(reorg_df):
+    tempName = 'tempcsv.csv'
+    reorg_df.to_csv(tempName,header=False,index=False)
+    return tempName
+
+def readContents(fileName):
+    contents = csv.reader(open(fileName))
+    return contents
+
+def reorg_df(price_df):
+#     print(price_df.columns)
+    reorg_df = pd.DataFrame(columns=['item_id','timestamp','avgHighPrice','highPriceVolume','avgLowPrice','lowPriceVolume'])
+    
+    try:
+        reorg_df['item_id'] = price_df['item_id'].astype(int)
+    except:
+        reorg_df['item_id'] = price_df['id'].astype(int)
+        
+    reorg_df['timestamp'] = price_df['timestamp'].astype(int)
+    reorg_df['avgHighPrice'] = price_df['avgHighPrice'].astype(float)
+    reorg_df['highPriceVolume'] = price_df['highPriceVolume'].astype(int)
+    reorg_df['avgLowPrice'] = price_df['avgLowPrice'].astype(float)
+    reorg_df['lowPriceVolume'] = price_df['lowPriceVolume'].astype(int)
+    return reorg_df
+
+def addCSV_ToDB(next_df,conn):
+    
+    newdf = reorg_df(next_df)
+    temp_name = write_to_csv(newdf)
+    contents = readContents(temp_name)
+    add_prices(contents,conn)
+    
+    
+def getCSVList():
+    # folder path
+    dir_path = 'Data_CSVs'
+    # list to store files
+    res = []
+    # Iterate directory
+    for path in os.listdir(dir_path):
+        # check if current path is a file
+        if os.path.isfile(os.path.join(dir_path, path)):
+            res.append(path)
+    return res
+
+def Get_LatestPriceCSVs():
+    
+    now = round(datetime.timestamp(datetime.now()))
+    newTime = getLatestTimestamp('latestTime.txt')
+    timeRange = range(newTime,now,300)
+    for i in tqdm(timeRange):
+#         print('Getting TimeStamp Data')
+        newData = get5mItemData(newTime)
+        
+        newData.to_csv(f'Data_CSVs/price_data_{newTime}.csv')
+        
+        newTime = incrementTime(newTime)
+        
+        updateTimeFile(str(newTime),'latestTime.txt')
+        time.sleep(np.random.randint(0,3))
+    return
+
+def runTableAdder():
+    csvList = getCSVList()
+    conn = create_connection('../geitems.db')
+#     print(csvList)
+    for i in tqdm(csvList):
+        dfName = 'Data_CSVs\\'+i
+        
+        price_df = pd.read_csv(dfName)
+        price_df.drop('Unnamed: 0',axis=1,inplace=True)
+        shutil.move(dfName,'Imported\\'+i)
+        if(len(price_df) == 0):
+#             print('No Columns!')
+            continue
+        #move dfName to folder called Imported
+        
+        addCSV_ToDB(price_df,conn)
+    
+    conn.close()
+        
+        

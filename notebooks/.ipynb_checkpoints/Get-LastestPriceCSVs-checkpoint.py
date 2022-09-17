@@ -6,17 +6,20 @@ from datetime import datetime
 from osrs_fcns import *
 import datetime
 import time
+from tqdm import tqdm
+
 
 
 def main():
     
-    
+    now = round(datetime.datetime.timestamp(datetime.datetime.now()))
     newTime = getLatestTimestamp('latestTime.txt')
-    while(newTime <= round(datetime.datetime.timestamp(datetime.datetime.now()))):
-        print('Getting TimeStamp Data')
+    timeRange = range(newTime,now,300)
+    for i in tqdm(timeRange):
+#         print('Getting TimeStamp Data')
         newData = get5mItemData(newTime)
-        if(len(newData)>0):
-            addLatestData(newData)
+        
+        newData.to_csv(f'Data_CSVs/price_data_{newTime}.csv')
         
         newTime = incrementTime(newTime)
         
