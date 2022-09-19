@@ -15,8 +15,8 @@ def main():
     while(newTime <= round(datetime.datetime.timestamp(datetime.datetime.now()))):
         print('Getting TimeStamp Data')
         newData = get5mItemData(newTime)
-        if(len(newData)>0):
-            addLatestData(newData)
+        
+        newData.to_csv(f'Data_CSVs/price_data_{newTime}.csv')
         
         newTime = incrementTime(newTime)
         
