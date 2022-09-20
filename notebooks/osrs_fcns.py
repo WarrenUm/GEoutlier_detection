@@ -5,6 +5,13 @@ import json
 from datetime import datetime
 import sqlite3
 from sqlite3 import Error
+import csv
+import os
+from tqdm.notebook import tqdm_notebook
+from tqdm import tqdm
+import time
+import shutil
+from time import perf_counter_ns
 
 def unix_conv(df,col):
     converted_col = pd.to_datetime(df[col], unit='s')
@@ -73,7 +80,7 @@ def update_items():
     return all_items
 
 
-def add_prices(conn, item):
+def add_prices(contents,conn):
     """
     Create a new project into the items table
     :param conn:
@@ -83,7 +90,7 @@ def add_prices(conn, item):
     sql = ''' INSERT INTO prices(item_id,timestamp,avgHighPrice,highPriceVolume,avgLowPrice,lowPriceVolume)
               VALUES(?,?,?,?,?,?) '''
     cur = conn.cursor()
-    cur.execute(sql, item)
+    cur.executemany(sql, contents)
     conn.commit()
     return cur.lastrowid
 
@@ -96,7 +103,7 @@ def create_connection(db_file):
     
     try:
         conn = sqlite3.connect(db_file)
-        print(sqlite3.version)
+#         print(sqlite3.version)
     except Error as e:
         print(e)
     return conn
@@ -152,7 +159,7 @@ def getLatestTimestamp(file):
     #open file
     file = open(file,'r')
     #read line
-    print("Reading New time")
+#     print("Reading New time")
     timeLine = file.readline()
     #close file
     file.close()
@@ -163,18 +170,18 @@ def updateTimeFile(newTime,file):
     #open file
     file = open(file,'w')
     #overwrite first line with used timestamp
-    print(f'Updating Time File With: {newTime}')
+#     print(f'Updating Time File With: {newTime}')
     file.writelines(newTime)
     #close file
     file.close()
     return newTime
 
 def incrementTime(oldTime):
-    print('Incrementing Time')
+#     print('Incrementing Time')
     return oldTime + 300
 
 def addLatestData(itemdf):
-    print('Connecting to Database')
+#     print('Connecting to Database')
     conn = create_connection('../geitems.db')
     for row in range(0,len(itemdf)):
         item_id = int(itemdf.iloc[row]['item_id'])
@@ -186,8 +193,189 @@ def addLatestData(itemdf):
 
     
     price = (item_id,timestamp,avghigh,highvol,avglow,lowvol);
-    print('Adding Data To Table')
+#     print('Adding Data To Table')
     price_id = add_prices(conn, price)
-    print('Disconnecting from Database')
+#     print('Disconnecting from Database')
     conn.close()
     
+def write_to_csv(reorg_df):
+    tempName = 'tempcsv.csv'
+    reorg_df.to_csv(tempName,header=False,index=False)
+    return tempName
+
+def readContents(fileName):
+    contents = csv.reader(open(fileName))
+    return contents
+
+def reorg_df(price_df):
+#     print(price_df.columns)
+    reorg_df = pd.DataFrame(columns=['item_id','timestamp','avgHighPrice','highPriceVolume','avgLowPrice','lowPriceVolume'])
+    
+    try:
+        reorg_df['item_id'] = price_df['item_id'].astype(int)
+    except:
+        reorg_df['item_id'] = price_df['id'].astype(int)
+        
+    reorg_df['timestamp'] = price_df['timestamp'].astype(int)
+    reorg_df['avgHighPrice'] = price_df['avgHighPrice'].astype(float)
+    reorg_df['highPriceVolume'] = price_df['highPriceVolume'].astype(int)
+    reorg_df['avgLowPrice'] = price_df['avgLowPrice'].astype(float)
+    reorg_df['lowPriceVolume'] = price_df['lowPriceVolume'].astype(int)
+    return reorg_df
+
+def addCSV_ToDB(next_df,conn):
+    
+    newdf = reorg_df(next_df)
+    temp_name = write_to_csv(newdf)
+    contents = readContents(temp_name)
+    add_prices(contents,conn)
+    
+    
+def getCSVList():
+    # folder path
+    dir_path = 'Data_CSVs'
+    # list to store files
+    res = []
+    # Iterate directory
+    for path in os.listdir(dir_path):
+        # check if current path is a file
+        if os.path.isfile(os.path.join(dir_path, path)):
+            res.append(path)
+    return res
+
+def Get_LatestPriceCSVs():
+    
+    now = round(datetime.timestamp(datetime.now()))
+    newTime = getLatestTimestamp('latestTime.txt')
+    timeRange = range(newTime,now,300)
+    for i in tqdm(timeRange):
+#         print('Getting TimeStamp Data')
+        newData = get5mItemData(newTime)
+        
+        newData.to_csv(f'Data_CSVs/price_data_{newTime}.csv')
+        
+        newTime = incrementTime(newTime)
+        
+        updateTimeFile(str(newTime),'latestTime.txt')
+        time.sleep(np.random.randint(0,3))
+    return
+
+def runTableAdder():
+    csvList = getCSVList()
+    conn = create_connection('../geitems.db')
+#     print(csvList)
+    for i in tqdm(csvList):
+        dfName = 'Data_CSVs\\'+i
+        
+        price_df = pd.read_csv(dfName)
+        price_df.drop('Unnamed: 0',axis=1,inplace=True)
+        shutil.move(dfName,'Imported\\'+i)
+        if(len(price_df) == 0):
+#             print('No Columns!')
+            continue
+        #move dfName to folder called Imported
+        
+        addCSV_ToDB(price_df,conn)
+    
+    conn.close()
+        
+def queryDB(query):
+    conn = sqlite3.connect('../geitems.db')
+    response = conn.cursor().execute(query).fetchall()
+    conn.close()
+    return response
+
+def getLatestItemMap(idFirst=True):
+    headers = {'User-Agent':'GEoutlier-detection'}
+    api_endpt = "https://prices.runescape.wiki/api/v1/osrs"
+    items_endpt = "/mapping"
+    try:
+        items_response = requests.get((api_endpt+items_endpt), headers=headers)
+        all_items = pd.DataFrame.from_dict(json.loads(items_response.text))
+        all_items.to_csv('latestItemsList.csv')
+    
+    except:    
+        #default to saved most recent if can't get
+        all_items = pd.read_csv('latestItemsList.csv',index_col=0)
+        
+    itemDict = {}
+    idSeries = pd.Series(all_items['id'])
+    nameSeries = pd.Series(all_items['name'])
+    if(idFirst):
+        for i,val in enumerate(idSeries):
+            itemDict[val] = nameSeries[i]
+    else:
+        for i,val in enumerate(nameSeries):
+            itemDict[val] = idSeries[i]
+    return itemDict
+    
+def cleanItemDF(df):
+    df.members = df.members.astype(bool)
+    df.drop('id',inplace=True,axis=1)
+    return df
+
+def cleanPriceDF(df):
+    #format timestamp and replace empty str with np.nan
+    df.timestamp = pd.to_datetime(df.timestamp,unit='s')
+    df.avgHighPrice.replace('',np.nan,inplace=True)
+    df.avgLowPrice.replace('',np.nan,inplace=True)
+    df.set_index('timestamp',inplace=True)
+    df.drop('id',inplace=True,axis=1)
+    return df
+
+def formatPriceDF(response):
+    df = pd.DataFrame(response,columns=['id','item_id','timestamp','avgHighPrice','highPriceVolume','avgLowPrice','lowPriceVolume'])
+    return df
+
+def formatItemDF(response):
+    df = pd.DataFrame(response,columns=['id','item_id','members','lowalch','buyLimit','value','highalch','icon','name','examine'])
+    return df
+
+def getItemInfo(item):
+    if(type(item) == str):
+        mapping = getLatestItemMap(idFirst=False)
+        itemID = mapping[item]
+        itemInfo = cleanItemDF(formatItemDF(queryDB(f"""SELECT * from items WHERE item_id = {itemID} LIMIT 1""")))
+    else:
+        itemID = item
+        itemInfo = cleanItemDF(formatItemDF(queryDB(f"""SELECT * from items WHERE item_id = {itemID} LIMIT 1""")))
+        
+    return itemInfo
+
+def getItemPrices(items,dateBegin,dateEnd):
+    t1_start = perf_counter_ns()    
+    #convert dateStr to dtObj and then to seconds
+    dateStart = convertDateToTimestamp(dateBegin)
+    dateEnd = convertDateToTimestamp(dateEnd)
+    t_dtconvert = perf_counter_ns()
+    print('Time to convert dates:',(t_dtconvert-t1_start)/1000000000)
+    
+    #convert each itemName to item_id
+    print('Mapping Names To IDs')
+    mapping = getLatestItemMap(idFirst=False)
+    item_ids = []
+    for i in items:
+        item_ids.append(mapping[i])
+    t_mapping = perf_counter_ns()
+    print('Time to map item names:',(t_mapping-t_dtconvert)/1000000000)
+    
+    print('Querying DB')
+    fullDF = cleanPriceDF(formatPriceDF(queryDB(f"""SELECT * from prices WHERE timestamp > {dateStart} AND timestamp < {dateEnd}""")))
+    t_query = perf_counter_ns()
+    print('Time to query DB:',(t_query-t_mapping)/1000000000)
+
+    print('Filtering DB')
+    filteredDF = fullDF.loc[fullDF['item_id'].isin(item_ids)]
+    t_filter = perf_counter_ns()
+    print('Time to filter DF:',(t_filter-t_query)/1000000000)
+    return filteredDF
+
+def convertDateToTimestamp(dateStr):
+    dtObj = datetime.strptime(dateStr, '%d/%m/%y %H:%M:%S').timestamp()
+    return dtObj
+
+def resampleDF(df,resampleStr):
+    return df.resample(resampleStr).mean()
+
+
+        
