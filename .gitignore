@@ -1,3 +1,4 @@
-\geitems.db
-*\notebooks\Data_CSVs*
-*\notebooks\Imported*
+/geitems.db
+/notebooks/Data_CSVs
+/notebooks/Imported
+/smallgedb.db
