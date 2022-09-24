@@ -281,9 +281,7 @@ def runTableAdder():
         addCSV_ToDB(price_df,conn)
     
     conn.close()
-        
-<<<<<<< HEAD
-=======
+
 def queryDB(query):
     conn = sqlite3.connect('../geitems.db')
     response = conn.cursor().execute(query).fetchall()
@@ -382,6 +380,4 @@ def convertDateToTimestamp(dateStr):
 def resampleDF(df,resampleStr):
     return df.resample(resampleStr).mean()
 
-
->>>>>>> 6c41324c24f06dc2820fb9c503f00a74ebe0678a
         
