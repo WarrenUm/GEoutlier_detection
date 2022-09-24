@@ -11,6 +11,10 @@ from tqdm.notebook import tqdm_notebook
 from tqdm import tqdm
 import time
 import shutil
+<<<<<<< HEAD
+=======
+from time import perf_counter_ns
+>>>>>>> 6c41324c24f06dc2820fb9c503f00a74ebe0678a
 
 def unix_conv(df,col):
     converted_col = pd.to_datetime(df[col], unit='s')
@@ -102,7 +106,7 @@ def create_connection(db_file):
     
     try:
         conn = sqlite3.connect(db_file)
-        print(sqlite3.version)
+#         print(sqlite3.version)
     except Error as e:
         print(e)
     return conn
@@ -278,4 +282,106 @@ def runTableAdder():
     
     conn.close()
         
+<<<<<<< HEAD
+=======
+def queryDB(query):
+    conn = sqlite3.connect('../geitems.db')
+    response = conn.cursor().execute(query).fetchall()
+    conn.close()
+    return response
+
+def getLatestItemMap(idFirst=True):
+    headers = {'User-Agent':'GEoutlier-detection'}
+    api_endpt = "https://prices.runescape.wiki/api/v1/osrs"
+    items_endpt = "/mapping"
+    try:
+        items_response = requests.get((api_endpt+items_endpt), headers=headers)
+        all_items = pd.DataFrame.from_dict(json.loads(items_response.text))
+        all_items.to_csv('latestItemsList.csv')
+    
+    except:    
+        #default to saved most recent if can't get
+        all_items = pd.read_csv('latestItemsList.csv',index_col=0)
+        
+    itemDict = {}
+    idSeries = pd.Series(all_items['id'])
+    nameSeries = pd.Series(all_items['name'])
+    if(idFirst):
+        for i,val in enumerate(idSeries):
+            itemDict[val] = nameSeries[i]
+    else:
+        for i,val in enumerate(nameSeries):
+            itemDict[val] = idSeries[i]
+    return itemDict
+    
+def cleanItemDF(df):
+    df.members = df.members.astype(bool)
+    df.drop('id',inplace=True,axis=1)
+    return df
+
+def cleanPriceDF(df):
+    #format timestamp and replace empty str with np.nan
+    df.timestamp = pd.to_datetime(df.timestamp,unit='s')
+    df.avgHighPrice.replace('',np.nan,inplace=True)
+    df.avgLowPrice.replace('',np.nan,inplace=True)
+    df.set_index('timestamp',inplace=True)
+    df.drop('id',inplace=True,axis=1)
+    return df
+
+def formatPriceDF(response):
+    df = pd.DataFrame(response,columns=['id','item_id','timestamp','avgHighPrice','highPriceVolume','avgLowPrice','lowPriceVolume'])
+    return df
+
+def formatItemDF(response):
+    df = pd.DataFrame(response,columns=['id','item_id','members','lowalch','buyLimit','value','highalch','icon','name','examine'])
+    return df
+
+def getItemInfo(item):
+    if(type(item) == str):
+        mapping = getLatestItemMap(idFirst=False)
+        itemID = mapping[item]
+        itemInfo = cleanItemDF(formatItemDF(queryDB(f"""SELECT * from items WHERE item_id = {itemID} LIMIT 1""")))
+    else:
+        itemID = item
+        itemInfo = cleanItemDF(formatItemDF(queryDB(f"""SELECT * from items WHERE item_id = {itemID} LIMIT 1""")))
+        
+    return itemInfo
+
+def getItemPrices(items,dateBegin,dateEnd):
+    t1_start = perf_counter_ns()    
+    #convert dateStr to dtObj and then to seconds
+    dateStart = convertDateToTimestamp(dateBegin)
+    dateEnd = convertDateToTimestamp(dateEnd)
+    t_dtconvert = perf_counter_ns()
+    print('Time to convert dates:',(t_dtconvert-t1_start)/1000000000)
+    
+    #convert each itemName to item_id
+    print('Mapping Names To IDs')
+    mapping = getLatestItemMap(idFirst=False)
+    item_ids = []
+    for i in items:
+        item_ids.append(mapping[i])
+    t_mapping = perf_counter_ns()
+    print('Time to map item names:',(t_mapping-t_dtconvert)/1000000000)
+    
+    print('Querying DB')
+    fullDF = cleanPriceDF(formatPriceDF(queryDB(f"""SELECT * from prices WHERE timestamp > {dateStart} AND timestamp < {dateEnd}""")))
+    t_query = perf_counter_ns()
+    print('Time to query DB:',(t_query-t_mapping)/1000000000)
+
+    print('Filtering DB')
+    filteredDF = fullDF.loc[fullDF['item_id'].isin(item_ids)]
+    t_filter = perf_counter_ns()
+    print('Time to filter DF:',(t_filter-t_query)/1000000000)
+    return filteredDF
+
+def convertDateToTimestamp(dateStr):
+    dtObj = datetime.strptime(dateStr, '%d/%m/%y %H:%M:%S').timestamp()
+    return dtObj
+
+def resampleDF(df,resampleStr):
+    return df.resample(resampleStr).mean()
+
+
+>>>>>>> 6c41324c24f06dc2820fb9c503f00a74ebe0678a
         
