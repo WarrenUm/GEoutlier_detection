@@ -1,0 +1,12 @@
+# Deep-learning dependencies for Module 12 (sequence models: LSTM / Temporal CNN).
+# Kept separate from requirements.txt because torch is large and is not needed
+# for Modules 0-11. Install on top of the base requirements when you reach it:
+#
+#   pip install -r requirements.txt
+#   pip install -r requirements-dl.txt
+#
+# Note: for a ROCm (AMD GPU) or CUDA build of torch, install torch from the
+# appropriate PyTorch index instead of PyPI; see https://pytorch.org/get-started/
+
+torch>=2.4
+darts>=0.30      # optional: high-level time-series DL/forecasting toolkit

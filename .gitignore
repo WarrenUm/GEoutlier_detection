@@ -1,3 +1,15 @@
 \geitems.db
 *\notebooks\Data_CSVs*
 *\notebooks\Imported*
+
+# Secrets / local config
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Jupyter
+.ipynb_checkpoints/
