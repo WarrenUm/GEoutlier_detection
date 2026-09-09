@@ -1,4 +1,4 @@
-# GEoutlier_detection — OSRS Market Data as a Full Data-Science Curriculum
+# StatsAndML — OSRS Market Data as a Full Data-Science Curriculum
 
 This project uses real Old School RuneScape (OSRS) Grand Exchange market data as
 the running example for a **complete, undergraduate-level data-science
@@ -565,7 +565,7 @@ everything after.
 ## Repository layout
 
 ```
-GEoutlier_detection/
+StatsAndML/
 ├── README.md              # this roadmap
 ├── requirements.txt       # base stack (Phases 1-3 + classical ML/forecasting)
 ├── requirements-dl.txt    # deep-learning extras (Phase 4 neural modules)

@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../python_InfluxDB"
+		},
+		{
+			"path": "../Data-Science-Full-Curriculum-2021-Jul-07_00-26-59"
+		},
+		{
+			"path": "../illumidesk_files"
+		}
+	],
+	"settings": {}
+}

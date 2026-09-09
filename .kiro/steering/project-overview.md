@@ -1,6 +1,6 @@
 # Project Overview
 
-`GEoutlier_detection` is the **analysis and modeling** half of a two-project OSRS
+`StatsAndML` is the **analysis and modeling** half of a two-project OSRS
 (Old School RuneScape) Grand Exchange data-science stack. Its sibling project,
 `python_InfluxDB` (open in this workspace), owns **data collection and storage**:
 it ingests 5-minute Grand Exchange price snapshots from the RuneScape Wiki Prices
@@ -23,7 +23,7 @@ MLOps), all re-grounded in OSRS market data.
 | Project | Role | Owns |
 |---------|------|------|
 | `python_InfluxDB` | **Data platform** | Ingestion pipeline (`ge_pipeline`), InfluxDB 3 Enterprise store, FastAPI query API, Grafana, React SPA |
-| `GEoutlier_detection` (this) | **Analysis / modeling** | Notebooks and scripts that read the store and work the full data-science curriculum (tooling → statistics → ML → deep learning); the phased learning roadmap |
+| `StatsAndML` (this) | **Analysis / modeling** | Notebooks and scripts that read the store and work the full data-science curriculum (tooling → statistics → ML → deep learning); the phased learning roadmap |
 
 This project does **not** ingest or write price data. It is a **read-only
 consumer** of the store that `python_InfluxDB` maintains. Any need to change how
@@ -78,7 +78,7 @@ snapshots (`prices/`) remain, as historical reference:
 ## Layout
 
 ```
-GEoutlier_detection/
+StatsAndML/
 ├── README.md              # the statistics -> ML learning roadmap (TOC + sources)
 ├── requirements.txt       # base analysis/modeling stack (Modules 0-11)
 ├── requirements-dl.txt    # deep-learning extras (Module 12)
